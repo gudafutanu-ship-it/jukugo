@@ -450,8 +450,6 @@
   <script>
     // =========================================
     // ここに貼る① 二字熟語
-    // 形式:
-    // { word: "安心", meaning: "あんしん" },
     // =========================================
     const DATA_TWO = [
       { word: "愛情", meaning: "あいじょう" },
@@ -3610,8 +3608,6 @@
 
     // =========================================
     // ここに貼る② 四字熟語
-    // 形式:
-    // { word: "一石二鳥", meaning: "いっせきにちょう" },
     // =========================================
     const DATA_FOUR = [
       // { word: "一石二鳥", meaning: "いっせきにちょう" },
@@ -3620,17 +3616,15 @@
 
     // =========================================
     // ここに貼る③ 特別
-    // 形式:
-    // { word: "臨機応変", meaning: "りんきおうへん" },
     // =========================================
     const DATA_SPECIAL = [
       // { word: "臨機応変", meaning: "りんきおうへん" },
     ];
 
-    const STORAGE_KEY_INDEX = "jukugo_flash_saved_index_v1";
-    const STORAGE_KEY_MODE = "jukugo_flash_saved_mode_v1";
-    const STORAGE_KEY_SEC = "jukugo_flash_saved_sec_v1";
-    const STORAGE_KEY_SHOW = "jukugo_flash_saved_show_v1";
+    const STORAGE_KEY_INDEX = "jukugo_flash_saved_index_v2";
+    const STORAGE_KEY_MODE = "jukugo_flash_saved_mode_v2";
+    const STORAGE_KEY_SEC = "jukugo_flash_saved_sec_v2";
+    const STORAGE_KEY_SHOW = "jukugo_flash_saved_show_v2";
 
     const modeEl = document.getElementById("mode");
     const secEl = document.getElementById("sec");
@@ -3659,6 +3653,13 @@
       if (mode === "two") return DATA_TWO;
       if (mode === "four") return DATA_FOUR;
       return DATA_SPECIAL;
+    }
+
+    function saveCurrentState() {
+      localStorage.setItem(STORAGE_KEY_INDEX, String(currentIndex));
+      localStorage.setItem(STORAGE_KEY_MODE, modeEl.value);
+      localStorage.setItem(STORAGE_KEY_SEC, secEl.value);
+      localStorage.setItem(STORAGE_KEY_SHOW, showReading ? "1" : "0");
     }
 
     function fitWord() {
@@ -3695,10 +3696,12 @@
         return;
       }
 
-      const item = currentList[currentIndex];
+      const safeIndex = Math.max(0, Math.min(currentIndex, currentList.length - 1));
+      const item = currentList[safeIndex];
+
       wordEl.textContent = item.word;
       meaningEl.textContent = showReading ? item.meaning : "";
-      progressEl.textContent = `${currentIndex + 1} / ${currentList.length}`;
+      progressEl.textContent = `${safeIndex + 1} / ${currentList.length}`;
       metaEl.textContent = isPlaying
         ? `フラッシュ中（${Number(secEl.value).toFixed(1)}秒ごと）`
         : "停止中";
@@ -3712,6 +3715,7 @@
         timer = null;
       }
       isPlaying = false;
+      saveCurrentState();
       renderCard();
     }
 
@@ -3723,35 +3727,34 @@
         currentIndex = 0;
         metaEl.textContent = auto ? "最後まで表示したので先頭に戻りました" : "先頭に戻りました";
       }
+
+      saveCurrentState();
       renderCard();
     }
 
     function startFlash(fromBeginning = true) {
-      stopFlash();
+      if (timer) {
+        clearInterval(timer);
+        timer = null;
+      }
+
       currentList = getCurrentList();
 
       if (fromBeginning) {
         currentIndex = 0;
       } else {
         if (currentIndex >= currentList.length) currentIndex = 0;
+        if (currentIndex < 0) currentIndex = 0;
       }
 
       isPlaying = true;
       renderCard();
+      saveCurrentState();
 
       const sec = Math.max(0.3, Number(secEl.value) || 1.5) * 1000;
       timer = setInterval(() => {
         nextCard(true);
       }, sec);
-    }
-
-    function saveState() {
-      localStorage.setItem(STORAGE_KEY_INDEX, String(currentIndex));
-      localStorage.setItem(STORAGE_KEY_MODE, modeEl.value);
-      localStorage.setItem(STORAGE_KEY_SEC, secEl.value);
-      localStorage.setItem(STORAGE_KEY_SHOW, showReading ? "1" : "0");
-      metaEl.textContent = "現在位置を保存しました";
-      renderCard();
     }
 
     function loadState() {
@@ -3762,7 +3765,7 @@
 
       if (savedMode) modeEl.value = savedMode;
       if (savedSec) secEl.value = savedSec;
-      if (savedShow) showReading = savedShow === "1";
+      if (savedShow !== null) showReading = savedShow === "1";
 
       toggleReadingBtn.classList.toggle("active", showReading);
       toggleReadingBtn.textContent = showReading ? "読み表示" : "読み非表示";
@@ -3785,6 +3788,7 @@
       showReading = !showReading;
       toggleReadingBtn.classList.toggle("active", showReading);
       toggleReadingBtn.textContent = showReading ? "読み表示" : "読み非表示";
+      saveCurrentState();
       renderCard();
     });
 
@@ -3804,39 +3808,58 @@
     });
 
     nextBtn.addEventListener("click", () => {
-      stopFlash();
+      if (timer) {
+        clearInterval(timer);
+        timer = null;
+      }
+      isPlaying = false;
+      currentList = getCurrentList();
       nextCard(false);
     });
 
     restartBtn.addEventListener("click", () => {
       currentList = getCurrentList();
       currentIndex = 0;
+      saveCurrentState();
       stopFlash();
       renderCard();
       metaEl.textContent = "最初からに戻しました";
     });
 
     saveBtn.addEventListener("click", () => {
-      saveState();
+      saveCurrentState();
+      metaEl.textContent = "現在位置を保存しました";
+      renderCard();
     });
 
     backBtn.addEventListener("click", () => {
-      stopFlash();
+      if (timer) {
+        clearInterval(timer);
+        timer = null;
+      }
+      isPlaying = false;
       currentList = getCurrentList();
       if (currentList.length > 0) {
         currentIndex = currentIndex > 0 ? currentIndex - 1 : currentList.length - 1;
+        saveCurrentState();
         renderCard();
       }
     });
 
     modeEl.addEventListener("change", () => {
-      stopFlash();
+      if (timer) {
+        clearInterval(timer);
+        timer = null;
+      }
+      isPlaying = false;
       currentList = getCurrentList();
       currentIndex = 0;
+      saveCurrentState();
       renderCard();
     });
 
     secEl.addEventListener("change", () => {
+      saveCurrentState();
       if (isPlaying) {
         startFlash(false);
       } else {
