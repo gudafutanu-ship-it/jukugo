@@ -1,19 +1,20 @@
 {
   "name": "熟語フラッシュ",
   "short_name": "熟語",
-  "start_url": "./index_github_iphone.html",
+  "start_url": "/jukugo/",
+  "scope": "/jukugo/",
   "display": "standalone",
   "background_color": "#f4f6fb",
-  "theme_color": "#5b86f3",
+  "theme_color": "#f4f6fb",
   "icons": [
     {
-      "src": "jukugo.png",
-      "sizes": "512x512",
+      "src": "/jukugo/jukugo.png",
+      "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "jukugo.png",
-      "sizes": "192x192",
+      "src": "/jukugo/jukugo.png",
+      "sizes": "512x512",
       "type": "image/png"
     }
   ]
